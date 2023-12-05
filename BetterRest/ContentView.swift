@@ -20,6 +20,9 @@ struct ContentView: View {
         components.minute = 0
         return Calendar.current.date(from: components) ?? .now
     }
+    var reccomendedBedTime: String {
+        return calculateBedtime()
+    }
     var body: some View {
         NavigationStack {
             Form {
@@ -35,21 +38,22 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Daily coffee intake")
                         .font(.headline)
-                    Stepper("^[\(coffeeAmount) cup](inflect: true)", value: $coffeeAmount, in: 1...20)
+                    Picker("^[\(coffeeAmount) cup](inflect: true)", selection: $coffeeAmount) {
+                        ForEach(1..<20) {
+                            Text("^[\($0 - 1) cup](inflect: true)")
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Reccomended Bedtime").font(.headline)
+                    Text("\(reccomendedBedTime)")
                 }
             }
             .navigationTitle("BetterRest")
-            .toolbar {
-                Button("Calculate", action: calculateBedtime)
-            }
-            .alert(alertTitle, isPresented: $showingAlert) {
-                Button("OK") {}
-            } message: {
-                Text(alertMessage)
-            }
         }
     }
-    func calculateBedtime() {
+    func calculateBedtime() -> String {
+        var sleepTime: Date
         do {
             let config  = MLModelConfiguration()
             let model = try BetterRestMLModelEquation(configuration: config)
@@ -57,14 +61,14 @@ struct ContentView: View {
             let hour = (components.hour ?? 0) * 60 * 60
             let minute = (components.minute ?? 0) * 60
             let prediction = try model.prediction(wake: Int64(Double(hour + minute)), estimatedSleep: sleepAmount, coffee: Int64(Double(coffeeAmount)))
-            let sleepTime = wakeUp - prediction.actualSleep
+            sleepTime = wakeUp - prediction.actualSleep
             alertTitle = "Your ideal bedtime is..."
-            alertMessage = sleepTime.formatted(date: .omitted, time: .shortened);
+            return sleepTime.formatted(date: .omitted, time: .shortened);
         } catch {
             alertTitle = "Error"
             alertMessage = "There was a problem"
         }
-        showingAlert = true
+        return "failure"
     }
 }
 
